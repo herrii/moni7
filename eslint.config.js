@@ -16,7 +16,14 @@ export default tseslint.config(
       globals: {
         process: 'readonly',
         module: 'readonly',
-        console: 'readonly'
+        console: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        TouchEvent: 'readonly',
+        ref: 'readonly',
+        computed: 'readonly',
+        useRoute: 'readonly',
+        useRouter: 'readonly'
       }
     }
   },
