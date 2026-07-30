@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import AppHeader from '~/components/scaffold/layout/AppHeader.vue'
 import AppNavigation from '~/components/scaffold/layout/AppNavigation.vue'
-import BaseBottomSheet from '~/components/base/BaseBottomSheet.vue'
+import BaseBottomSheet from '~/components/base/navigation/BaseBottomSheet.vue'
+import BaseToast from '~/components/base/feedback/BaseToast.vue'
 
 const showBottomSheet = ref(false)
 const router = useRouter()
@@ -32,7 +33,7 @@ const navigateTo = (path: string) => {
     </div>
 
     <!-- Global Bottom Sheet -->
-    <BaseBottomSheet v-model:show="showBottomSheet">
+    <BaseBottomSheet v-model:show="showBottomSheet" :show-close-button="false">
       <div class="flex flex-col gap-4 text-center">
         <h3 class="text-lg font-bold text-slate-800 mb-2">Catat Transaksi</h3>
         
@@ -83,5 +84,8 @@ const navigateTo = (path: string) => {
         </button>
       </div>
     </BaseBottomSheet>
+
+    <!-- Global Toast notification feedback -->
+    <BaseToast />
   </div>
 </template>

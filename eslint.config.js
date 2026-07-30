@@ -20,10 +20,17 @@ export default tseslint.config(
         window: 'readonly',
         document: 'readonly',
         TouchEvent: 'readonly',
+        MouseEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+        HTMLTextAreaElement: 'readonly',
         ref: 'readonly',
         computed: 'readonly',
         useRoute: 'readonly',
-        useRouter: 'readonly'
+        useRouter: 'readonly',
+        onMounted: 'readonly',
+        onUnmounted: 'readonly',
+        watch: 'readonly',
+        nextTick: 'readonly'
       }
     }
   },
