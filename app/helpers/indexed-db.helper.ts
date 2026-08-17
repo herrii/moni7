@@ -99,3 +99,122 @@ export const runSeeders = async (db: IDBDatabase): Promise<{ userId: number; acc
 
 export { runMigration } from '@/database/core/migration'
 
+/**
+ * Generic promise-based helper to insert a record into an ObjectStore.
+ */
+export const addToStore = <T>(storeName: string, data: T): Promise<number> => {
+  return openConnection().then((db) => {
+    return new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite')
+      const store = tx.objectStore(storeName)
+      const req = store.add(data)
+
+      req.onsuccess = () => resolve(req.result as number)
+      req.onerror = () => reject(new Error(`Failed to add record to store "${storeName}": ${req.error?.message}`))
+    })
+  })
+}
+
+/**
+ * Generic promise-based helper to update a record in an ObjectStore.
+ */
+export const updateInStore = <T>(storeName: string, data: T): Promise<void> => {
+  return openConnection().then((db) => {
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite')
+      const store = tx.objectStore(storeName)
+      const req = store.put(data)
+
+      req.onsuccess = () => resolve()
+      req.onerror = () => reject(new Error(`Failed to update record in store "${storeName}": ${req.error?.message}`))
+    })
+  })
+}
+
+/**
+ * Generic promise-based helper to delete a record from an ObjectStore by primary key.
+ */
+export const deleteFromStore = (storeName: string, id: number): Promise<void> => {
+  return openConnection().then((db) => {
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite')
+      const store = tx.objectStore(storeName)
+      const req = store.delete(id)
+
+      req.onsuccess = () => resolve()
+      req.onerror = () => reject(new Error(`Failed to delete record ID ${id} from store "${storeName}": ${req.error?.message}`))
+    })
+  })
+}
+
+/**
+ * Generic promise-based helper to fetch a single record by primary key.
+ */
+export const getByIdFromStore = <T>(storeName: string, id: number): Promise<T | null> => {
+  return openConnection().then((db) => {
+    return new Promise<T | null>((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly')
+      const store = tx.objectStore(storeName)
+      const req = store.get(id)
+
+      req.onsuccess = () => resolve((req.result as T) ?? null)
+      req.onerror = () => reject(new Error(`Failed to fetch record ID ${id} from store "${storeName}": ${req.error?.message}`))
+    })
+  })
+}
+
+/**
+ * Generic promise-based helper to fetch all records from an ObjectStore or Index.
+ */
+export const getAllFromStore = <T>(
+  storeName: string,
+  indexName?: string,
+  keyRange?: IDBKeyRange,
+  direction: IDBCursorDirection = 'next'
+): Promise<T[]> => {
+  return openConnection().then((db) => {
+    return new Promise<T[]>((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly')
+      const target: IDBObjectStore | IDBIndex = indexName
+        ? tx.objectStore(storeName).index(indexName)
+        : tx.objectStore(storeName)
+
+      const req = target.getAll(keyRange)
+
+      req.onsuccess = () => {
+        let results = (req.result as T[]) ?? []
+        if (direction === 'prev' || direction === 'prevunique') {
+          results = results.reverse()
+        }
+        resolve(results)
+      }
+      req.onerror = () => reject(new Error(`Failed to fetch records from store "${storeName}": ${req.error?.message}`))
+    })
+  })
+}
+
+/**
+ * Generic promise-based helper to count records in an ObjectStore or Index.
+ */
+export const countInStore = (
+  storeName: string,
+  indexName?: string,
+  keyRange?: IDBKeyRange
+): Promise<number> => {
+  return openConnection().then((db) => {
+    return new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly')
+      const target: IDBObjectStore | IDBIndex = indexName
+        ? tx.objectStore(storeName).index(indexName)
+        : tx.objectStore(storeName)
+
+      const req = target.count(keyRange)
+
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(new Error(`Failed to count records in store "${storeName}": ${req.error?.message}`))
+    })
+  })
+}
+
+
+
