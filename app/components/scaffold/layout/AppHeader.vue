@@ -1,6 +1,13 @@
 <script setup lang="ts">
+import { useActiveUser } from '@/composables/useActiveUser'
+
 const route = useRoute()
 const router = useRouter()
+const { activeUser, refreshActiveUser } = useActiveUser()
+
+onMounted(() => {
+  refreshActiveUser()
+})
 
 // Determine if we are on the home screen
 const isHome = computed(() => route.path === '/')
@@ -10,13 +17,19 @@ const headerConfig = computed(() => {
   const path = route.path
   
   if (path === '/') {
-    return { title: 'Selamat datang, Yogi', subtitle: 'Komisi Tak Terbatas' }
+    return { title: `Selamat datang, ${activeUser.value?.name || 'Pengguna'}`, subtitle: 'Komisi Tak Terbatas' }
   } else if (path === '/reports') {
     return { title: 'Laporan', subtitle: 'Ikhtisar keuangan Anda' }
   } else if (path === '/goals') {
     return { title: 'Anggaran', subtitle: 'Rencana & target tabungan' }
   } else if (path === '/profile') {
     return { title: 'Akun', subtitle: 'Profil & pengaturan aplikasi' }
+  } else if (path === '/profile/users') {
+    return { title: 'Kelola Pengguna', subtitle: 'Daftar & profil pengguna', isSubpage: true }
+  } else if (path === '/profile/users/create') {
+    return { title: 'Tambah Pengguna', subtitle: 'Buat profil pengguna baru', isSubpage: true }
+  } else if (path.startsWith('/profile/users/')) {
+    return { title: 'Edit Pengguna', subtitle: 'Ubah data profil pengguna', isSubpage: true }
   } else if (path === '/transaction/income') {
     return { title: 'Catat Pemasukan', subtitle: 'Tambah pemasukan baru', isSubpage: true }
   } else if (path === '/transaction/expense') {
@@ -43,13 +56,12 @@ const goBack = () => {
       <div class="flex items-center justify-between">
         <!-- User Info & Avatar -->
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white">
-            <!-- Panda or avatar icon -->
-            <i class="fa-solid fa-user text-lg"></i>
+          <div class="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-lg">
+            {{ activeUser?.name ? activeUser.name.charAt(0).toUpperCase() : 'Y' }}
           </div>
           <div class="flex flex-col">
             <span class="text-xs text-white/80">Selamat datang,</span>
-            <span class="text-base font-bold tracking-wide">Yogi</span>
+            <span class="text-base font-bold tracking-wide">{{ activeUser?.name || 'Pengguna' }}</span>
           </div>
         </div>
 
