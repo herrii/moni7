@@ -6,9 +6,25 @@ import {
   deleteFromStore,
   getByIdFromStore,
   getAllFromStore,
-  openConnection
+  openDatabase
 } from '@/helpers/indexed-db.helper'
-import { seedDefaultCategories } from '@/database/seeders/default-category'
+import { seedDefaultCategories, restoreDefaultCategoriesSeeder } from '@/database/seeders/default-category'
+
+/**
+ * Checks if a category name already exists for a user under the same category type.
+ */
+export async function isCategoryNameDuplicate(
+  userId: number,
+  name: string,
+  type: CategoryType,
+  excludeId?: number
+): Promise<boolean> {
+  const categories = await getCategories(userId, type)
+  const normalizedName = name.trim().toLowerCase()
+  return categories.some(
+    (cat) => cat.name.toLowerCase() === normalizedName && cat.id !== excludeId
+  )
+}
 
 /**
  * Creates a new transaction category.
@@ -19,6 +35,11 @@ export async function createCategory(
   const trimmedName = data.name.trim()
   if (!trimmedName) {
     throw new Error('Nama kategori tidak boleh kosong')
+  }
+
+  const isDuplicate = await isCategoryNameDuplicate(data.user_id, trimmedName, data.type)
+  if (isDuplicate) {
+    throw new Error(`Kategori ${data.type === 'income' ? 'Pemasukan' : 'Pengeluaran'} dengan nama "${trimmedName}" sudah ada`)
   }
 
   const now = Date.now()
@@ -49,10 +70,26 @@ export async function updateCategory(
     throw new Error('Nama kategori tidak boleh kosong')
   }
 
+  const targetName = data.name !== undefined ? data.name.trim() : existing.name
+  const targetType = data.type !== undefined ? data.type : existing.type
+
+  if (data.name !== undefined || data.type !== undefined) {
+    const isDuplicate = await isCategoryNameDuplicate(
+      existing.user_id,
+      targetName,
+      targetType,
+      id
+    )
+    if (isDuplicate) {
+      throw new Error(`Kategori ${targetType === 'income' ? 'Pemasukan' : 'Pengeluaran'} dengan nama "${targetName}" sudah ada`)
+    }
+  }
+
   const updatedCategory: CategoryInterface = {
     ...existing,
     ...data,
-    name: data.name !== undefined ? data.name.trim() : existing.name,
+    name: targetName,
+    type: targetType,
     updated_at: Date.now()
   }
 
@@ -79,7 +116,7 @@ export async function findCategoryById(id: number): Promise<CategoryInterface | 
 }
 
 /**
- * Gets categories belonging to a user, optionally filtered by income/expense type.
+ * Gets categories belonging to a user, optionally filtered by income/expense type, sorted alphabetically.
  */
 export async function getCategories(
   userId: number,
@@ -88,16 +125,40 @@ export async function getCategories(
   const range = IDBKeyRange.only(userId)
   const categories = await getAllFromStore<CategoryInterface>(STORES.CATEGORIES, 'user_id', range)
   
+  let filtered = categories
   if (type) {
-    return categories.filter((cat) => cat.type === type)
+    filtered = categories.filter((cat) => cat.type === type)
   }
-  return categories
+  return filtered.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * Searches categories by name (case-insensitive) for a user, optionally filtered by type.
+ */
+export async function searchCategories(
+  userId: number,
+  query: string,
+  type?: CategoryType
+): Promise<CategoryInterface[]> {
+  const categories = await getCategories(userId, type)
+  const q = query.trim().toLowerCase()
+  if (!q) return categories
+
+  return categories.filter((cat) => cat.name.toLowerCase().includes(q))
 }
 
 /**
  * Seeds default categories for a user if none exist.
  */
 export async function seedCategories(userId: number): Promise<number> {
-  const db = await openConnection()
+  const db = await openDatabase()
   return await seedDefaultCategories(db, userId)
+}
+
+/**
+ * Restores missing default categories for a user without overwriting or creating duplicate categories.
+ */
+export async function restoreDefaultCategories(userId: number): Promise<number> {
+  const db = await openDatabase()
+  return await restoreDefaultCategoriesSeeder(db, userId)
 }
