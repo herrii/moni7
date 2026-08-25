@@ -66,6 +66,18 @@ const handleRunSeeder = async () => {
           </div>
           <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
         </NuxtLink>
+
+        <!-- Kelola Akun -->
+        <NuxtLink
+          to="/profile/settings/accounts"
+          class="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer transition-colors"
+        >
+          <div class="flex items-center gap-3 text-slate-700">
+            <i class="fa-solid fa-wallet text-slate-400 w-5"></i>
+            <span class="text-sm font-semibold">Kelola Akun</span>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+        </NuxtLink>
       </div>
     </div>
 
