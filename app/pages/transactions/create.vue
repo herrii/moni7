@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AccountInterface } from '@/models/account.model'
-import type { CategoryInterface } from '@/models/category.model'
+import type { CategoryInterface, CategoryType } from '@/models/category.model'
 import { createTransaction } from '@/services/transaction.service'
 import { getCategories } from '@/services/category.service'
 import { getAccounts } from '@/services/account.service'
@@ -10,6 +10,7 @@ import BaseLoading from '~/components/base/feedback/BaseLoading.vue'
 import TransactionForm from '~/components/scaffold/transaction/TransactionForm.vue'
 import type { TransactionFormData } from '~/components/scaffold/transaction/TransactionForm.vue'
 
+const route = useRoute()
 const router = useRouter()
 const { activeUser } = useActiveUser()
 const { showToast } = useToast()
@@ -19,13 +20,20 @@ const accounts = ref<AccountInterface[]>([])
 const loading = ref(true)
 const saving = ref(false)
 
+// Query parameter ?type=income or ?type=expense
+const queryType = computed<CategoryType | undefined>(() => {
+  const t = route.query.type as string
+  if (t === 'income' || t === 'expense') return t
+  return undefined
+})
+
 const loadFormData = async () => {
   if (!activeUser.value?.id) return
 
   loading.value = true
   try {
     const [catList, accList] = await Promise.all([
-      getCategories(activeUser.value.id, 'income'),
+      getCategories(activeUser.value.id),
       getAccounts(activeUser.value.id)
     ])
     categories.value = catList
@@ -53,20 +61,21 @@ const handleCreateTransaction = async (formData: TransactionFormData) => {
 
   saving.value = true
   try {
-    await createTransaction({
+    const newTx = await createTransaction({
       user_id: activeUser.value.id,
       account_id: formData.account_id,
       category_id: formData.category_id,
-      type: 'income',
+      type: formData.type,
       amount: formData.amount,
       description: formData.description,
       transaction_date: formData.transaction_date
     })
 
-    showToast('Pemasukan berhasil dicatat & saldo diperbarui', 'success')
+    const typeLabel = newTx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'
+    showToast(`Transaksi ${typeLabel} berhasil dicatat & saldo diperbarui`, 'success')
     router.push('/transactions')
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Gagal mencatat pemasukan'
+    const msg = err instanceof Error ? err.message : 'Gagal mencatat transaksi'
     showToast(msg, 'error')
   } finally {
     saving.value = false
@@ -74,7 +83,7 @@ const handleCreateTransaction = async (formData: TransactionFormData) => {
 }
 
 const handleCancel = () => {
-  router.push('/')
+  router.back()
 }
 </script>
 
@@ -85,18 +94,11 @@ const handleCancel = () => {
     </div>
 
     <div v-else class="bg-white rounded-3xl p-6 shadow-soft-sm border border-slate-100/50">
-      <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm">
-          <i class="fa-solid fa-arrow-down"></i>
-        </span>
-        Catat Pemasukan
-      </h2>
-
       <TransactionForm
         :accounts="accounts"
         :categories="categories"
-        fixed-type="income"
-        submit-text="Simpan Pemasukan"
+        :fixed-type="queryType"
+        submit-text="Simpan Transaksi"
         :loading="saving"
         @submit="handleCreateTransaction"
         @cancel="handleCancel"

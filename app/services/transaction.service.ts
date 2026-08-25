@@ -29,19 +29,33 @@ async function validateTransaction(data: {
   account_id: number
   category_id: number
   amount: number
+  type: CategoryType
+  description: string
 }) {
+  if (!data.description || !data.description.trim()) {
+    throw new Error('Deskripsi transaksi harus diisi')
+  }
+
+  if (data.description.trim().length > 100) {
+    throw new Error('Deskripsi transaksi maksimal 100 karakter')
+  }
+
   if (data.amount <= 0) {
     throw new Error('Jumlah transaksi harus lebih besar dari 0')
   }
 
   const account = await findAccountById(data.account_id)
   if (!account) {
-    throw new Error(`Dompet/Akun dengan ID ${data.account_id} tidak ditemukan`)
+    throw new Error('Akun / Dompet yang dipilih tidak ditemukan')
   }
 
   const category = await findCategoryById(data.category_id)
   if (!category) {
-    throw new Error(`Kategori dengan ID ${data.category_id} tidak ditemukan`)
+    throw new Error('Kategori yang dipilih tidak ditemukan')
+  }
+
+  if (category.type !== data.type) {
+    throw new Error(`Kategori "${category.name}" (${category.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}) tidak sesuai dengan tipe transaksi (${data.type === 'income' ? 'Pemasukan' : 'Pengeluaran'})`)
   }
 }
 
@@ -51,13 +65,19 @@ async function validateTransaction(data: {
 export async function createTransaction(
   data: Omit<TransactionInterface, 'id' | 'created_at' | 'updated_at'>
 ): Promise<TransactionInterface> {
-  await validateTransaction(data)
+  await validateTransaction({
+    account_id: data.account_id,
+    category_id: data.category_id,
+    amount: data.amount,
+    type: data.type,
+    description: data.description
+  })
 
   const now = Date.now()
   const txData: Omit<TransactionInterface, 'id'> = {
     ...data,
     amount: Math.round(data.amount),
-    description: data.description ? data.description.trim() : '',
+    description: data.description.trim(),
     created_at: now,
     updated_at: now
   }
@@ -92,16 +112,22 @@ export async function updateTransaction(
     updated_at: Date.now()
   }
 
-  await validateTransaction(updatedTx)
+  await validateTransaction({
+    account_id: updatedTx.account_id,
+    category_id: updatedTx.category_id,
+    amount: updatedTx.amount,
+    type: updatedTx.type,
+    description: updatedTx.description
+  })
 
-  // 1. Rollback old balance impact
+  // 1. Rollback old balance impact on old account
   const oldDelta = existing.type === 'income' ? -existing.amount : existing.amount
   await updateAccountBalance(existing.account_id, oldDelta)
 
   // 2. Update record
   await updateInStore<TransactionInterface>(STORES.TRANSACTIONS, updatedTx)
 
-  // 3. Apply new balance impact
+  // 3. Apply new balance impact on updated account
   const newDelta = updatedTx.type === 'income' ? updatedTx.amount : -updatedTx.amount
   await updateAccountBalance(updatedTx.account_id, newDelta)
 
@@ -146,7 +172,7 @@ export async function getTransactions(
     'prev'
   )
 
-  // Sort by transaction_date descending
+  // Sort by transaction_date descending (newest first)
   transactions.sort((a, b) => b.transaction_date - a.transaction_date)
 
   // Filters
@@ -167,7 +193,9 @@ export async function getTransactions(
   }
   if (options.search) {
     const q = options.search.toLowerCase()
-    transactions = transactions.filter((t) => t.description.toLowerCase().includes(q))
+    transactions = transactions.filter(
+      (t) => t.description.toLowerCase().includes(q)
+    )
   }
 
   // Pagination / Offset Limit
