@@ -218,3 +218,129 @@ export async function countTransactions(
   const items = await getTransactions(userId, { ...options, limit: undefined, offset: undefined })
   return items.length
 }
+
+// =============================================
+// Report Aggregation
+// =============================================
+
+export interface CategoryExpenseData {
+  categoryId: number
+  categoryName: string
+  categoryIcon: string
+  categoryColor: string
+  total: number
+  percentage: number
+}
+
+export interface CashFlowPoint {
+  label: string
+  income: number
+  expense: number
+}
+
+export interface ReportData {
+  totalIncome: number
+  totalExpense: number
+  netBalance: number
+  totalTransactionCount: number
+  expenseByCategory: CategoryExpenseData[]
+  incomeByCategory: CategoryExpenseData[]
+  cashFlowTrend: CashFlowPoint[]
+}
+
+/**
+ * Aggregates report data for a user within a date range.
+ * Groups expenses by category (top 8 + "Lainnya"),
+ * builds daily cash flow trend, and calculates totals.
+ */
+export async function getReportData(
+  userId: number,
+  startDate: number,
+  endDate: number
+): Promise<ReportData> {
+  const transactions = await getTransactions(userId, { startDate, endDate })
+
+  let totalIncome = 0
+  let totalExpense = 0
+  const expenseMap = new Map<number, number>()
+  const incomeMap = new Map<number, number>()
+  const dailyMap = new Map<string, { income: number; expense: number }>()
+
+  for (const tx of transactions) {
+    if (tx.type === 'income') {
+      totalIncome += tx.amount
+      incomeMap.set(tx.category_id, (incomeMap.get(tx.category_id) ?? 0) + tx.amount)
+    } else {
+      totalExpense += tx.amount
+      expenseMap.set(tx.category_id, (expenseMap.get(tx.category_id) ?? 0) + tx.amount)
+    }
+
+    // Daily cash flow grouping
+    const dayKey = new Date(tx.transaction_date).toISOString().slice(0, 10)
+    const existing = dailyMap.get(dayKey) ?? { income: 0, expense: 0 }
+    if (tx.type === 'income') existing.income += tx.amount
+    else existing.expense += tx.amount
+    dailyMap.set(dayKey, existing)
+  }
+
+  // Build category expense breakdown with category info
+  const { getCategories: getCats } = await import('./category.service')
+  const allCategories = await getCats(userId)
+  const categoryLookup = new Map(allCategories.map((c) => [c.id!, c]))
+
+  const buildCategoryData = (
+    catMap: Map<number, number>,
+    total: number,
+    maxVisible: number
+  ): CategoryExpenseData[] => {
+    const sorted = [...catMap.entries()]
+      .map(([catId, amount]) => {
+        const cat = categoryLookup.get(catId)
+        return {
+          categoryId: catId,
+          categoryName: cat?.name ?? 'Tidak Diketahui',
+          categoryIcon: cat?.icon ?? 'fa-circle-question',
+          categoryColor: cat?.color ?? '#64748b',
+          total: amount,
+          percentage: total > 0 ? Math.round((amount / total) * 100) : 0
+        }
+      })
+      .sort((a, b) => b.total - a.total)
+
+    if (sorted.length <= maxVisible) return sorted
+
+    const top = sorted.slice(0, maxVisible)
+    const restTotal = sorted.slice(maxVisible).reduce((sum, item) => sum + item.total, 0)
+    top.push({
+      categoryId: -1,
+      categoryName: 'Lainnya',
+      categoryIcon: 'fa-ellipsis',
+      categoryColor: '#94a3b8',
+      total: restTotal,
+      percentage: total > 0 ? Math.round((restTotal / total) * 100) : 0
+    })
+    return top
+  }
+
+  const expenseByCategory = buildCategoryData(expenseMap, totalExpense, 8)
+  const incomeByCategory = buildCategoryData(incomeMap, totalIncome, 8)
+
+  // Build daily cash flow sorted by date
+  const cashFlowTrend: CashFlowPoint[] = [...dailyMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dateKey, data]) => ({
+      label: dateKey.slice(5).replace('-', '/'),
+      income: data.income,
+      expense: data.expense
+    }))
+
+  return {
+    totalIncome,
+    totalExpense,
+    netBalance: totalIncome - totalExpense,
+    totalTransactionCount: transactions.length,
+    expenseByCategory,
+    incomeByCategory,
+    cashFlowTrend
+  }
+}
