@@ -215,6 +215,13 @@ export const countInStore = (
     })
   })
 }
-
-
-
+/**
+ * Resets the entire database by closing connection, deleting IndexedDB, reopening connection, and running seeders.
+ */
+export const resetEntireDatabase = async (): Promise<{ userId: number; accountId: number; categoriesCount: number }> => {
+  const { DB_NAME } = await import('@/config/database.config')
+  closeConnection()
+  await deleteDatabase(DB_NAME)
+  const db = await openDatabase()
+  return await runSeeders(db)
+}
