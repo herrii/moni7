@@ -200,6 +200,7 @@ const handleResetDatabase = async () => {
         icon="fa-users"
         icon-color="text-indigo-500"
         to="/profile/users"
+        @click="() => navigateTo('/profile/users')"
       />
 
       <SettingItem
@@ -208,6 +209,7 @@ const handleResetDatabase = async () => {
         icon="fa-wallet"
         icon-color="text-emerald-500"
         to="/profile/settings/accounts"
+        @click="() => navigateTo('/profile/settings/accounts')"
       />
 
       <SettingItem
@@ -216,6 +218,7 @@ const handleResetDatabase = async () => {
         icon="fa-tags"
         icon-color="text-amber-500"
         to="/profile/settings/categories"
+        @click="() => navigateTo('/profile/settings/categories')"
       />
     </SettingGroup>
 
