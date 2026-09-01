@@ -6,8 +6,10 @@ export interface GoalInterface {
   title: string
   target_amount: number
   current_amount: number
-  target_date: number
+  target_date?: number
   completed: boolean
+  icon?: string
+  color?: string
   created_at: number
   updated_at: number
 }
@@ -25,6 +27,9 @@ export const DEFAULT_GOAL_VALUES: Omit<GoalInterface, 'id' | 'user_id' | 'create
   title: '',
   target_amount: 0,
   current_amount: 0,
-  target_date: Date.now(),
-  completed: false
+  target_date: undefined,
+  completed: false,
+  icon: 'fa-piggy-bank',
+  color: '#3b82f6'
 }
+
