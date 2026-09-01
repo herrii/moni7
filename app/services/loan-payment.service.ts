@@ -25,6 +25,10 @@ export async function addLoanPayment(
     throw new Error('Jumlah pembayaran harus lebih besar dari 0')
   }
 
+  if (loan.remaining_amount > 0 && paymentAmount > loan.remaining_amount) {
+    throw new Error(`Jumlah cicilan (Rp${paymentAmount.toLocaleString('id-ID')}) melebihi sisa hutang/piutang (Rp${loan.remaining_amount.toLocaleString('id-ID')})`)
+  }
+
   const now = Date.now()
   const paymentData: Omit<LoanPaymentInterface, 'id'> = {
     ...data,
@@ -100,11 +104,12 @@ export async function deleteLoanPayment(id: number): Promise<void> {
 }
 
 /**
- * Gets payment history for a specific loan.
+ * Gets payment history for a specific loan, sorted newest first.
  */
 export async function getLoanPayments(loanId: number): Promise<LoanPaymentInterface[]> {
   const range = IDBKeyRange.only(loanId)
-  return await getAllFromStore<LoanPaymentInterface>(STORES.LOAN_PAYMENTS, 'loan_id', range)
+  const payments = await getAllFromStore<LoanPaymentInterface>(STORES.LOAN_PAYMENTS, 'loan_id', range)
+  return payments.sort((a, b) => (b.payment_date || b.created_at) - (a.payment_date || a.created_at))
 }
 
 /**

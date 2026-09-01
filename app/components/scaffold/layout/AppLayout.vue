@@ -66,7 +66,7 @@ const navigateTo = (path: string) => {
           <button
             type="button"
             class="flex flex-col items-center justify-center p-4 bg-cyan-50 hover:bg-cyan-100/80 rounded-2xl border border-cyan-100 transition-all duration-300 active:scale-95 group"
-            @click="navigateTo('/loan')"
+            @click="navigateTo('/loans/create')"
           >
             <div class="w-12 h-12 rounded-full bg-cyan-500 text-white flex items-center justify-center text-lg mb-2 shadow-md shadow-cyan-200 group-hover:scale-110 transition-transform">
               <i class="fa-solid fa-handshake"></i>

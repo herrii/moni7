@@ -1,7 +1,7 @@
 import { STORES } from '@/config/database.config'
 
 export type LoanType = 'debt' | 'receivable'
-export type LoanStatus = 'active' | 'paid'
+export type LoanStatus = 'active' | 'paid' | 'overdue'
 
 export interface LoanInterface {
   id?: number
