@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useActiveUser } from '@/composables/useActiveUser'
 import { useToast } from '@/composables/useToast'
-import { openDatabase, runSeeders, resetEntireDatabase } from '@/helpers/indexed-db.helper'
+import { restoreDefaultData, resetDatabase } from '@/services/user.service'
 import {
   exportTransactionsToCsv,
   exportAccountsToCsv,
@@ -18,7 +18,6 @@ import ImportCsvDialog from '~/components/scaffold/settings/ImportCsvDialog.vue'
 import ExportCsvDialog from '~/components/scaffold/settings/ExportCsvDialog.vue'
 import BaseDialog from '~/components/base/feedback/BaseDialog.vue'
 import BaseBottomSheet from '~/components/base/navigation/BaseBottomSheet.vue'
-import moment from 'moment'
 
 const { activeUser, refreshActiveUser } = useActiveUser()
 const { showToast } = useToast()
@@ -70,7 +69,7 @@ const handleExportModule = async (moduleKey: 'transactions' | 'accounts' | 'cate
 
   loadingAction.value = true
   try {
-    const dateStr = moment().format('YYYY-MM-DD')
+    const dateStr = new Date().toISOString().slice(0, 10)
     let content = ''
     let filename = ''
 
@@ -112,7 +111,7 @@ const handleExportAll = async () => {
 
   loadingAction.value = true
   try {
-    const dateStr = moment().format('YYYY-MM-DD')
+    const dateStr = new Date().toISOString().slice(0, 10)
     const userId = activeUser.value.id
 
     const [txCsv, accCsv, catCsv, goalCsv, loanCsv] = await Promise.all([
@@ -143,8 +142,7 @@ const handleExportAll = async () => {
 const handleRunSeeder = async () => {
   loadingAction.value = true
   try {
-    const db = await openDatabase()
-    const result = await runSeeders(db)
+    const result = await restoreDefaultData()
     await refreshActiveUser()
     showSeederDialog.value = false
     showToast(`Data default berhasil diperiksa & ditambahkan! (${result.categoriesCount} kategori)`, 'success')
@@ -160,7 +158,7 @@ const handleRunSeeder = async () => {
 const handleResetDatabase = async () => {
   loadingAction.value = true
   try {
-    await resetEntireDatabase()
+    await resetDatabase()
     await refreshActiveUser()
     showResetDialog.value = false
     showToast('Database berhasil direset penuh & disiapkan ulang! 🧹', 'success')

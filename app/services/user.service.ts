@@ -7,7 +7,8 @@ import {
   getByIdFromStore,
   getAllFromStore,
   runSeeders,
-  openDatabase
+  openDatabase,
+  resetEntireDatabase
 } from '@/helpers/indexed-db.helper'
 
 const ACTIVE_USER_STORAGE_KEY = 'moni7_active_user_id'
@@ -165,4 +166,21 @@ export async function getActiveUser(): Promise<UserInterface> {
   }
 
   return firstUser
+}
+
+/**
+ * Restores default data (user, account, categories) without overwriting existing data.
+ * Safe to run multiple times — seeders check for existence before inserting.
+ */
+export async function restoreDefaultData(): Promise<{ userId: number; accountId: number; categoriesCount: number }> {
+  const db = await openDatabase()
+  return await runSeeders(db)
+}
+
+/**
+ * Resets the entire database: closes connection, deletes IndexedDB, reopens, and re-runs all seeders.
+ * WARNING: This permanently deletes ALL user data.
+ */
+export async function resetDatabase(): Promise<{ userId: number; accountId: number; categoriesCount: number }> {
+  return await resetEntireDatabase()
 }

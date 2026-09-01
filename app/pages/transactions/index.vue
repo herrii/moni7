@@ -48,7 +48,8 @@ const loadMasterData = async () => {
     categories.value = catList
     accounts.value = accList
   } catch (err: unknown) {
-    console.error('Failed to load categories/accounts:', err)
+    const msg = err instanceof Error ? err.message : 'Gagal memuat data kategori & akun'
+    showToast(msg, 'warning')
   }
 }
 
